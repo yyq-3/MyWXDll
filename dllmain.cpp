@@ -1,11 +1,25 @@
 ﻿// dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
+#include <atlstr.h>
+#include <string>
 
-void MsgEcho();
-DWORD thread_id;
-DWORD tEax = 0,tEcx = 0,tEdx = 0,tEbx = 0,tEsp = 0,tEbp = 0,tEsi = 0,tEdi = 0;
-DWORD HookCallAddr;
-DWORD VirtualAllocAddr;
+int main();
+void init();
+void OnRevoke(DWORD esp);
+int Unhook(DWORD hookAddr, BYTE backCode[5]);
+void OnCall();
+int StartHook(DWORD hookAddr, BYTE backCode[5], void(*FuncBeCall)());
+LPDWORD thread_id;
+
+#define REVOKE_CALL_RVA 0x366BE4
+#define REVOKE_CALL_TARGET_RVA 0x3671F0
+
+DWORD revokeCallVA = 0;
+DWORD revokeCallTargetVA = 0;
+DWORD revokeCallJmpBackVA = 0;
+
+DWORD wechatWinAddr = 0;
+BYTE backCode[5];
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -15,7 +29,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH: 
-        MsgEcho();
         CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)main, 0, 0, thread_id);
         break; 
     case DLL_THREAD_ATTACH:
@@ -26,12 +39,32 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     return TRUE;
 }
 
-void MsgEcho() {
-    MessageBox(NULL, TEXT("注入DLL,DLL被释放"), TEXT("警告"), MB_ICONINFORMATION);
+int main(){
+    //MessageBox(NULL, TEXT("main函数"), TEXT("提示"), MB_OK);
+	init();
+	int res = StartHook(wechatWinAddr + REVOKE_CALL_RVA, backCode, OnCall);
+	CString str;
+	str.Format(_T("%d"), res);
+	//MessageBox(NULL, str.AllocSysString(), TEXT("提示"), MB_OK);
+	return 0;
 }
+void init() {
+	//wechatWinAddr = GetWxModuleAddress();
+	wechatWinAddr = (DWORD)LoadLibraryW(L"WeChatWin.dll");
+	//wechatWinAddr = 0x1234;
+	revokeCallVA = wechatWinAddr + REVOKE_CALL_RVA;
+	revokeCallTargetVA = wechatWinAddr + REVOKE_CALL_TARGET_RVA;
 
-void main(){
-    MessageBox(NULL, TEXT("main函数"), TEXT("提示"), MB_OK);
+	revokeCallJmpBackVA = revokeCallVA + 5;
+	/*DWORD x = (DWORD)LoadLibraryW(L"WeChatWin.dll");
+	
+	if (x != NULL) {
+		MessageBox(NULL, (LPCWSTR)x, L"TIS", MB_OK);
+	}
+	else
+	{
+		MessageBoxW(NULL, L"失败", L"??", MB_OK);
+	}*/
 }
 
 // 安装HOOK  采用inlineHOOK  
@@ -52,49 +85,33 @@ int StartHook(DWORD hookAddr, BYTE backCode[5], void(*FuncBeCall)()) {
 	return 0;
 }
 
+DWORD tEsp = 0;
 _declspec(naked) void OnCall() {
     __asm {
+		mov tEsp, esp
 	    pushad
 	}
-	//do something
+	OnRevoke(tEsp);
 	__asm {
 	    popad
-	    call ...
-	    jmp ...
+	    call revokeCallTargetVA
+	    jmp revokeCallJmpBackVA
 	}
-
-
-
-    __asm {
-		mov tEax, eax
-		mov tEcx, ecx
-		mov tEdx, edx
-		mov tEbx, ebx
-		mov tEsp, esp
-		mov tEbp, ebp
-		mov tEsi, esi
-		mov tEdi, edi
-	}
-	//do something
-	__asm {
-		mov eax, tEax
-		mov ecx, tEcx
-		mov edx, tEdx
-		mov ebx, tEbx
-		mov esp, tEsp
-		mov ebp, tEbp
-		mov esi, tEsi
-		mov edi, tEdi
-		call ...
-		jmp ...
-	}
-
-
 }
 
-DWORD shenqingneicun(){
-    VirtualAllocAddr = VirtualAlloc(NULL, 4096, MEM_COMMIT, PAGE_READWRITE);
-    return VirtualAllocAddr;
+void OnRevoke(DWORD esp) {
+	wchar_t *tips = *(wchar_t**)(esp + 0x58);
+	wchar_t *msg = *(wchar_t**)(esp + 0x80);
+	wchar_t *tishi = *(wchar_t**)(esp + 0x2F4);
+	if (NULL != tips) {
+		WCHAR buffer[8192];
+		wchar_t* pos = wcsstr(tips, L"撤回了一条消息");
+		MessageBox(NULL, L"第一次if",L"提示",MB_OK);
+		if (NULL != pos && NULL != msg) {
+			MessageBox(NULL, L"第2次if", L"提示", MB_OK);
+			MessageBox(NULL, buffer, TEXT("提示"), MB_OK);
+		}
+	}
 }
 
 
@@ -107,3 +124,28 @@ int Unhook(DWORD hookAddr, BYTE backCode[5]) {
 	return 0;
 }
 
+
+
+//uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
+//{
+//	uintptr_t modBaseAddr = 0;
+//	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, procId);
+//	if (hSnap != INVALID_HANDLE_VALUE)
+//	{
+//		MODULEENTRY32 modEntry;
+//		modEntry.dwSize = sizeof(modEntry);
+//		if (Module32First(hSnap, &modEntry))
+//		{
+//			do
+//			{
+//				if (!_wcsicmp(modEntry.szModule, modName))
+//				{
+//					modBaseAddr = (uintptr_t)modEntry.modBaseAddr;
+//					break;
+//				}
+//			} while (Module32Next(hSnap, &modEntry));
+//		}
+//	}
+//	CloseHandle(hSnap);
+//	return modBaseAddr;
+//}
