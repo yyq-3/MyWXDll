@@ -10,6 +10,7 @@ void OnRevoke(DWORD esp);
 int Unhook(DWORD hookAddr, BYTE backCode[5]);
 void OnCall();
 int StartHook(DWORD hookAddr, BYTE backCode[5], void(*FuncBeCall)());
+void CovenDWORDToLPCWSTR(DWORD dw);
 LPDWORD thread_id;
 
 #define REVOKE_CALL_RVA 0x366BE4
