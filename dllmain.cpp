@@ -1,8 +1,10 @@
 ﻿// dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
 #include <atlstr.h>
-#include <string>
 #include <stdio.h>
+#include <string>
+#include "HttpUtil.h"
+using namespace std;
 
 int main();
 void init();
@@ -11,6 +13,8 @@ int Unhook(DWORD hookAddr, BYTE backCode[5]);
 void OnCall();
 int StartHook(DWORD hookAddr, BYTE backCode[5], void(*FuncBeCall)());
 void CovenDWORDToLPCWSTR(DWORD dw);
+LPCTSTR CovenWchar_tToLPCWSTR(wchar_t* wch);
+
 LPDWORD thread_id;
 
 #define REVOKE_CALL_RVA 0x366BE4
@@ -23,7 +27,7 @@ DWORD revokeCallJmpBackVA = 0;
 DWORD wechatWinAddr = 0;
 BYTE backCode[5];
 
-char szTest[8196];
+TCHAR str[20];
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -45,10 +49,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 int main(){
 	init();
-	int res = StartHook(wechatWinAddr + REVOKE_CALL_RVA, backCode, OnCall);
-	// CString str;
-	// str.Format(_T("%d"), res);
-	//MessageBox(NULL, str.AllocSysString(), TEXT("提示"), MB_OK);
+	StartHook(wechatWinAddr + REVOKE_CALL_RVA, backCode, OnCall);
 	return 0;
 }
 void init() {
@@ -57,8 +58,6 @@ void init() {
 	revokeCallTargetVA = wechatWinAddr + REVOKE_CALL_TARGET_RVA;
 
 	revokeCallJmpBackVA = revokeCallVA + 5;
-	CovenDWORDToLPCWSTR(wechatWinAddr);
-    MessageBox(NULL, szTest, L"数据输出", MB_OK);
 }
 
 // 安装HOOK  采用inlineHOOK  
@@ -98,12 +97,13 @@ void OnRevoke(DWORD esp) {
 	wchar_t *msg = *(wchar_t**)(esp + 0x80);
 	wchar_t *tishi = *(wchar_t**)(esp + 0x2F4);
 	if (NULL != tips) {
+		
 		WCHAR buffer[8192];
-		wchar_t* pos = wcsstr(tips, L"撤回了一条消息");
-		MessageBox(NULL, L"第一次if",L"提示",MB_OK);
-		if (NULL != pos && NULL != msg) {
-			MessageBox(NULL, L"第2次if", L"提示", MB_OK);
-			MessageBox(NULL, buffer, TEXT("提示"), MB_OK);
+		if (NULL != msg) {
+			swprintf_s(buffer, L"{\"wxid\":\"%s\",\"content\":\"%s\",\"tips\":\"%s\"}", tips, msg, tishi);
+			MessageBox(NULL, (LPCWSTR)buffer, L"asd", MB_OK);
+			//MessageBox(NULL, (LPCWSTR)buffer, (LPCWSTR)chehuiren, MB_OK);
+			httpPost(buffer);
 		}
 	}
 }
@@ -120,31 +120,17 @@ int Unhook(DWORD hookAddr, BYTE backCode[5]) {
 
 // DWORD转LPCWSTR
 void CovenDWORDToLPCWSTR(DWORD dw){
-    sprintf_s(szTest, "%d", dw);
+	wsprintf(str, L"%d", dw);
 }
 
+// wchar_t转LPCWSTR
+LPCTSTR CovenWchar_tToLPCWSTR(wchar_t* wch) {
+	string str = (char*)wch;
+	wstring wstr;
+	int nLen = (int)str.length();
+	wstr.resize(nLen, L' ');
+	int nResult = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)str.c_str(), nLen, (LPWSTR)wstr.c_str(), nLen);
+	LPCTSTR lpc = wstr.c_str();
+	return lpc;
+}
 
-
-//uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
-//{
-//	uintptr_t modBaseAddr = 0;
-//	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, procId);
-//	if (hSnap != INVALID_HANDLE_VALUE)
-//	{
-//		MODULEENTRY32 modEntry;
-//		modEntry.dwSize = sizeof(modEntry);
-//		if (Module32First(hSnap, &modEntry))
-//		{
-//			do
-//			{
-//				if (!_wcsicmp(modEntry.szModule, modName))
-//				{
-//					modBaseAddr = (uintptr_t)modEntry.modBaseAddr;
-//					break;
-//				}
-//			} while (Module32Next(hSnap, &modEntry));
-//		}
-//	}
-//	CloseHandle(hSnap);
-//	return modBaseAddr;
-//}
