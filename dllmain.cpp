@@ -2,6 +2,7 @@
 #include "pch.h"
 #include <atlstr.h>
 #include <string>
+#include <stdio.h>
 
 int main();
 void init();
@@ -20,6 +21,8 @@ DWORD revokeCallJmpBackVA = 0;
 
 DWORD wechatWinAddr = 0;
 BYTE backCode[5];
+
+char szTest[8196];
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -40,31 +43,21 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 }
 
 int main(){
-    //MessageBox(NULL, TEXT("main函数"), TEXT("提示"), MB_OK);
 	init();
 	int res = StartHook(wechatWinAddr + REVOKE_CALL_RVA, backCode, OnCall);
-	CString str;
-	str.Format(_T("%d"), res);
+	// CString str;
+	// str.Format(_T("%d"), res);
 	//MessageBox(NULL, str.AllocSysString(), TEXT("提示"), MB_OK);
 	return 0;
 }
 void init() {
-	//wechatWinAddr = GetWxModuleAddress();
-	wechatWinAddr = (DWORD)LoadLibraryW(L"WeChatWin.dll");
-	//wechatWinAddr = 0x1234;
+	wechatWinAddr = (DWORD)GetModuleHandle(L"WeChatWin.dll");
 	revokeCallVA = wechatWinAddr + REVOKE_CALL_RVA;
 	revokeCallTargetVA = wechatWinAddr + REVOKE_CALL_TARGET_RVA;
 
 	revokeCallJmpBackVA = revokeCallVA + 5;
-	/*DWORD x = (DWORD)LoadLibraryW(L"WeChatWin.dll");
-	
-	if (x != NULL) {
-		MessageBox(NULL, (LPCWSTR)x, L"TIS", MB_OK);
-	}
-	else
-	{
-		MessageBoxW(NULL, L"失败", L"??", MB_OK);
-	}*/
+	CovenDWORDToLPCWSTR(wechatWinAddr);
+    MessageBox(NULL, szTest, L"数据输出", MB_OK);
 }
 
 // 安装HOOK  采用inlineHOOK  
@@ -122,6 +115,11 @@ int Unhook(DWORD hookAddr, BYTE backCode[5]) {
 		return -1;
 	}
 	return 0;
+}
+
+// DWORD转LPCWSTR
+void CovenDWORDToLPCWSTR(DWORD dw){
+    sprintf_s(szTest, "%d", dw);
 }
 
 
