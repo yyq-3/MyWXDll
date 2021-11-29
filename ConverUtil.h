@@ -3,18 +3,8 @@
 #include <string>
 using namespace std;
 
-#define BUFFER_SIZE 8196
+std::string string_To_UTF8(const std::string& str);
 
-// Wstringתstring
-std::string WString2String(const std::wstring& ws);
-// stringתWstring
-std::wstring String2WString(const std::string& s);
+std::string wideCharToMultiByte(wchar_t* pWCStrKey);
 
-// DWORDתLPCWSTR
-void CoverDWORDToLPCWSTR(DWORD dw);
-// wchar_tתLPCWSTR
-LPCTSTR CoverWchar_tToLPCWSTR(wchar_t* wch);
-
-string wstring2string(wstring wstr);
-
-wstring string2wstring(string str);
+LPCWSTR stringToLPCWSTR(std::string orig);

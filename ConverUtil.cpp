@@ -1,111 +1,49 @@
 #include "pch.h"
 #include "ConverUtil.h"
 #include <locale.h>
-#include <comdef.h>
 
 
-TCHAR str[20];
-
-//wstring=>string
-std::string WString2String(const std::wstring& ws)
+std::string string_To_UTF8(const std::string& str)
 {
-    std::string strLocale = setlocale(LC_ALL, "");
-    const wchar_t* wchSrc = ws.c_str();
-    size_t nDestSize = wcstombs(NULL, wchSrc, 0) + 1;
-    char* chDest = new char[nDestSize];
-    memset(chDest, 0, nDestSize);
-    wcstombs(chDest, wchSrc, nDestSize);
-    std::string strResult = chDest;
-    delete[]chDest;
-    setlocale(LC_ALL, strLocale.c_str());
-    return strResult;
+    int nwLen = ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, NULL, 0);
+    wchar_t* pwBuf = new wchar_t[nwLen + 1];//一定要加1，不然会出现尾巴
+    ZeroMemory(pwBuf, nwLen * 2 + 2);
+    ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.length(), pwBuf, nwLen);
+    int nLen = ::WideCharToMultiByte(CP_UTF8, 0, pwBuf, -1, NULL, NULL, NULL, NULL);
+    char* pBuf = new char[nLen + 1];
+    ZeroMemory(pBuf, nLen + 1);
+    ::WideCharToMultiByte(CP_UTF8, 0, pwBuf, nwLen, pBuf, nLen, NULL, NULL);
+    std::string retStr(pBuf);
+    delete[]pwBuf;
+    delete[]pBuf;
+    pwBuf = NULL;
+    pBuf = NULL;
+    return retStr;
 }
-// string => wstring
-std::wstring String2WString(const std::string& s)
+
+//不要忘记使用完char*后delete[]释放内存
+std::string wideCharToMultiByte(wchar_t* pWCStrKey)
 {
-    std::string strLocale = setlocale(LC_ALL, "");
-    const char* chSrc = s.c_str();
-    size_t nDestSize = mbstowcs(NULL, chSrc, 0) + 1;
-    wchar_t* wchDest = new wchar_t[nDestSize];
-    wmemset(wchDest, 0, nDestSize);
-    mbstowcs(wchDest, chSrc, nDestSize);
-    std::wstring wstrResult = wchDest;
-    delete[]wchDest;
-    setlocale(LC_ALL, strLocale.c_str());
-    return wstrResult;
+    //第一次调用确认转换后单字节字符串的长度，用于开辟空间
+    int pSize = WideCharToMultiByte(CP_OEMCP, 0, pWCStrKey, wcslen(pWCStrKey), NULL, 0, NULL, NULL);
+    char* pCStrKey = new char[pSize + 1];
+    //第二次调用将双字节字符串转换成单字节字符串
+    WideCharToMultiByte(CP_OEMCP, 0, pWCStrKey, wcslen(pWCStrKey), pCStrKey, pSize, NULL, NULL);
+    pCStrKey[pSize] = '\0';
+
+    //如果想要转换成string，直接赋值即可
+    string pKey = pCStrKey;
+    DELETE[pCStrKey];
+    return pKey;
 }
 
-
-// DWORDתLPCWSTR
-void CoverDWORDToLPCWSTR(DWORD dw) {
-    wsprintf(str, L"%d", dw);
-}
-
-// wchar_tתLPCWSTR
-LPCTSTR CoverWchar_tToLPCWSTR(wchar_t* wch) {
-    std::string tempStr = (char*)wch;
-    std::wstring wstr;
-    int nLen = (int)tempStr.length();
-    wstr.resize(nLen, L' ');
-    int nResult = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)tempStr.c_str(), nLen, (LPWSTR)wstr.c_str(), nLen);
-    LPCTSTR lpc = wstr.c_str();
-    return lpc;
-}
-
-
-std::string CoverWCHARToString(WCHAR buffer[]) {
-    char* MB = (char*)malloc(BUFFER_SIZE);
-    wchar_t* WC = buffer;
-    wcstombs(MB, WC, BUFFER_SIZE);
-    return MB;
-}
-
-std::string WCHAR2String(LPCWSTR pwszSrc) {
-    int nLen = WideCharToMultiByte(CP_ACP, 0, pwszSrc, -1, NULL, 0, NULL, NULL);
-    if (nLen <= 0)
-    {
-        return std::string("");
-    }
-
-    char* pszDst = new  char[nLen];
-    if (NULL == pszDst)
-    {
-        return std::string("");
-    }
-
-    WideCharToMultiByte(CP_ACP, 0, pwszSrc, -1, pszDst, nLen, NULL, NULL);
-    pszDst[nLen - 1] = 0;
-    std::string strTemp(pszDst);
-    delete[] pszDst;
-    return strTemp;
-}
-
-
-
-
-string wstring2string(wstring wstr)
+LPCWSTR stringToLPCWSTR(std::string orig)
 {
-    string result;
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    if (len <= 0)return result;
-    char* buffer = new char[len + 1];
-    if (buffer == NULL)return result;
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buffer, len, NULL, NULL);
-    buffer[len] = '\0';
-    result.append(buffer);
-    delete[] buffer;
-    return result;
-}
-wstring string2wstring(string str)
-{
-    wstring result;
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-    if (len < 0)return result;
-    wchar_t* buffer = new wchar_t[len + 1];
-    if (buffer == NULL)return result;
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buffer, len);
-    buffer[len] = '\0';
-    result.append(buffer);
-    delete[] buffer;
-    return result;
+    size_t origsize = orig.length() + 1;
+    const size_t newsize = 100;
+    size_t convertedChars = 0;
+    wchar_t* wcstring = (wchar_t*)malloc(sizeof(wchar_t) * (orig.length() - 1));
+    mbstowcs_s(&convertedChars, wcstring, origsize, orig.c_str(), _TRUNCATE);
+
+    return wcstring;
 }

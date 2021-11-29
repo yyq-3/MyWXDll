@@ -97,21 +97,19 @@ void OnRevoke(DWORD esp) {
 	wchar_t *tishi = *(wchar_t**)(esp + 0x2F4);
 	if (NULL != tips) {
 		
-		WCHAR buffer[8192];
+		//WCHAR buffer[8192];
 		if (NULL != msg) {
-			swprintf_s(buffer, L"{\"wxid\":\"%s\",\"content\":\"%s\",\"tips\":\"%s\"}", tips, msg, tishi);
-			//MessageBox(NULL, (LPCWSTR)buffer, L"asd", MB_OK);
-			//MessageBox(NULL, (LPCWSTR)buffer, (LPCWSTR)chehuiren, MB_OK);
-			//httpPost(buffer);
+			//swprintf_s(buffer, L"{\"wxid\":\"%s\",\"content\":\"%s\",\"tips\":\"%s\"}", tips, msg, tishi);
+			string tipsStr = wideCharToMultiByte(tips);
+			string msgStr = wideCharToMultiByte(msg);
+			string tishiStr = wideCharToMultiByte(tishi);
+			string body;
+			body.append(tipsStr).append("|").append(msgStr).append("|").append(tishiStr);
+			body = string_To_UTF8(body);
+			//MessageBox(NULL, stringToLPCWSTR(body), L"a", MB_OK);
 			try
 			{
 				http::Request request{ "http://localhost:8080/test" };
-				// send a post request
-				//const std::string body = WCHAR2String(buffer);
-				std::wstring wbody = std::wstring((LPCWSTR)buffer);
-				std::string body = wstring2string(wbody);
-
-				/*MessageBox(NULL, ch, L"aaa", MB_OK);*/
 				const auto response = request.send("POST", body, {
 					"Content-Type: application/json; charset=utf-8"
 					}, std::chrono::milliseconds(3000));
