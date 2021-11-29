@@ -524,7 +524,8 @@ namespace http
         Response send(const std::string& method = "GET",
             const std::string& body = "",
             const std::vector<std::string>& headers = {},
-            const std::chrono::milliseconds timeout = std::chrono::milliseconds{ -1 })
+            //const std::chrono::milliseconds timeout = std::chrono::milliseconds{ -1 })
+            const std::chrono::milliseconds timeout = std::chrono::milliseconds(3000))
         {
             return send(method,
                 std::vector<uint8_t>(body.begin(), body.end()),

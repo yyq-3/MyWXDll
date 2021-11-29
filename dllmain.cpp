@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string>
 #include "HttpUtil.h"
+#include "ConverUtil.h"
 using namespace std;
 
 int main();
@@ -12,8 +13,6 @@ void OnRevoke(DWORD esp);
 int Unhook(DWORD hookAddr, BYTE backCode[5]);
 void OnCall();
 int StartHook(DWORD hookAddr, BYTE backCode[5], void(*FuncBeCall)());
-void CovenDWORDToLPCWSTR(DWORD dw);
-LPCTSTR CovenWchar_tToLPCWSTR(wchar_t* wch);
 
 LPDWORD thread_id;
 
@@ -27,7 +26,7 @@ DWORD revokeCallJmpBackVA = 0;
 DWORD wechatWinAddr = 0;
 BYTE backCode[5];
 
-TCHAR str[20];
+
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -101,9 +100,26 @@ void OnRevoke(DWORD esp) {
 		WCHAR buffer[8192];
 		if (NULL != msg) {
 			swprintf_s(buffer, L"{\"wxid\":\"%s\",\"content\":\"%s\",\"tips\":\"%s\"}", tips, msg, tishi);
-			MessageBox(NULL, (LPCWSTR)buffer, L"asd", MB_OK);
+			//MessageBox(NULL, (LPCWSTR)buffer, L"asd", MB_OK);
 			//MessageBox(NULL, (LPCWSTR)buffer, (LPCWSTR)chehuiren, MB_OK);
-			httpPost(buffer);
+			//httpPost(buffer);
+			try
+			{
+				http::Request request{ "http://localhost:8080/test" };
+				// send a post request
+				//const std::string body = WCHAR2String(buffer);
+				std::wstring wbody = std::wstring((LPCWSTR)buffer);
+				std::string body = wstring2string(wbody);
+
+				/*MessageBox(NULL, ch, L"aaa", MB_OK);*/
+				const auto response = request.send("POST", body, {
+					"Content-Type: application/json; charset=utf-8"
+					}, std::chrono::milliseconds(3000));
+			}
+			catch (const std::exception& e)
+			{
+				e.what();
+			}
 		}
 	}
 }
@@ -116,21 +132,5 @@ int Unhook(DWORD hookAddr, BYTE backCode[5]) {
 		return -1;
 	}
 	return 0;
-}
-
-// DWORD转LPCWSTR
-void CovenDWORDToLPCWSTR(DWORD dw){
-	wsprintf(str, L"%d", dw);
-}
-
-// wchar_t转LPCWSTR
-LPCTSTR CovenWchar_tToLPCWSTR(wchar_t* wch) {
-	string str = (char*)wch;
-	wstring wstr;
-	int nLen = (int)str.length();
-	wstr.resize(nLen, L' ');
-	int nResult = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)str.c_str(), nLen, (LPWSTR)wstr.c_str(), nLen);
-	LPCTSTR lpc = wstr.c_str();
-	return lpc;
 }
 

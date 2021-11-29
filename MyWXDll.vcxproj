@@ -110,6 +110,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -155,6 +156,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ConverUtil.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="HttpRequest.hpp" />
     <ClInclude Include="HttpUtil.h" />
@@ -162,6 +164,7 @@
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConverUtil.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="HttpUtil.cpp" />
     <ClCompile Include="pch.cpp">
